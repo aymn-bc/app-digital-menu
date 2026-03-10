@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import type { HeroSection as HeroSectionType } from '@/data/mockData'
+import type { Restaurant } from '@/api/admin'
 import Button from './ui/Button'
 import Input from './ui/Input'
 
 interface HeroProps {
-  hero: HeroSectionType
+  hero: Restaurant['heroSection']
   restaurantName?: string
   onSearch?: (query: string) => void
 }

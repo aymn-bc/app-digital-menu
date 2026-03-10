@@ -1,9 +1,79 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Card, { CardContent, CardHeader } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
-import { sampleRestaurants, adminStats, themeUpdateHistory } from '@/data/mockData'
+import { getAdminStats, getRestaurants, getThemeUpdateHistory } from '@/api/admin'
+import type { AdminStats, Restaurant, ThemeUpdate } from '@/api/admin'
 
 export default function AdminDashboard() {
+  const [adminStats, setAdminStats] = useState<AdminStats | null>(null)
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+  const [themeUpdates, setThemeUpdates] = useState<ThemeUpdate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        const [statsData, restaurantsData, updatesData] = await Promise.all([
+          getAdminStats(),
+          getRestaurants(),
+          getThemeUpdateHistory()
+        ])
+        setAdminStats(statsData)
+        setRestaurants(restaurantsData)
+        setThemeUpdates(updatesData)
+      } catch (err) {
+        setError('Failed to load dashboard data')
+        console.error('Error fetching dashboard data:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[rgb(var(--text))]">Dashboard</h1>
+            <p className="text-[rgb(var(--text-muted))]">Loading...</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} variant="elevated">
+              <CardContent className="p-5">
+                <div className="animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !adminStats) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[rgb(var(--text))]">Dashboard</h1>
+            <p className="text-red-500">{error || 'Failed to load data'}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const stats = [
     { 
       label: 'Total Restaurants', 
@@ -95,7 +165,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-[rgb(var(--border))]">
-                {sampleRestaurants.slice(0, 4).map((restaurant) => (
+                {restaurants.slice(0, 4).map((restaurant) => (
                   <div key={restaurant.id} className="p-4 hover:bg-[rgb(var(--bg-elevated))] transition-colors">
                     <div className="flex items-center gap-4">
                       <img 
@@ -153,7 +223,7 @@ export default function AdminDashboard() {
               <p className="text-sm text-[rgb(var(--text-muted))]">Latest theme changes</p>
             </CardHeader>
             <CardContent className="p-4 space-y-4">
-              {themeUpdateHistory.map((update) => (
+              {themeUpdates.map((update) => (
                 <div key={update.id} className="timeline-step">
                   <div className="dot" />
                   <div>

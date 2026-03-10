@@ -22,7 +22,9 @@ function AppWrapper() {
     }
   }, [setOnline])
 
-  useEffect(() => registerSW(), [])
+  useEffect(() => {
+    registerSW()
+  }, [])
   useSync()
 
   useEffect(() => {
@@ -38,6 +40,8 @@ function AppWrapper() {
     </BrowserRouter>
   )
 }
+
+export default AppWrapper
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

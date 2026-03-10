@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const languages = [
@@ -14,10 +14,14 @@ export default function LanguageSwitcher() {
   
   const current = languages.find(l => l.code === i18n.language) || languages[0]
 
+  // Update DOM direction when language changes
+  useEffect(() => {
+    document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr'
+  }, [i18n.language])
+
   function changeLanguage(code: string) {
     i18n.changeLanguage(code)
     setOpen(false)
-    document.documentElement.dir = code === 'ar' ? 'rtl' : 'ltr'
   }
 
   return (

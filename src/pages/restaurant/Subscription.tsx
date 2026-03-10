@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Card, Button, Badge, toast } from '@/components/ui'
 
 interface Plan {
@@ -82,25 +82,28 @@ export default function SubscriptionPage() {
   const [isUpgrading, setIsUpgrading] = useState(false)
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly')
 
-  const handleUpgrade = async (plan: Plan) => {
+  const handleUpgrade = useCallback(async (plan: Plan) => {
     setSelectedPlan(plan)
     setIsUpgrading(true)
     
     // Simulate payment process
     await new Promise(resolve => setTimeout(resolve, 2000))
     
+    const startDate = new Date().toISOString().split('T')[0]
+    const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    
     setCurrentSubscription({
       plan,
       status: 'active',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      startDate,
+      endDate,
       autoRenew: true,
     })
     
     setIsUpgrading(false)
     setSelectedPlan(null)
     toast(`Successfully upgraded to ${plan.name}! 🎉`, 'success')
-  }
+  }, [])
 
   const getStatusColor = (status: Subscription['status']) => {
     switch (status) {

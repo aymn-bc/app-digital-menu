@@ -1,38 +1,14 @@
 import { useEffect, useState } from 'react'
-
-type ToastType = 'success' | 'error' | 'warning' | 'info'
-
-interface Toast {
-  id: string
-  message: string
-  type: ToastType
-}
-
-let toastListeners: ((toasts: Toast[]) => void)[] = []
-let toasts: Toast[] = []
-
-function notifyListeners() {
-  toastListeners.forEach(fn => fn([...toasts]))
-}
-
-export function toast(message: string, type: ToastType = 'info') {
-  const id = Date.now().toString()
-  toasts = [...toasts, { id, message, type }]
-  notifyListeners()
-  
-  setTimeout(() => {
-    toasts = toasts.filter(t => t.id !== id)
-    notifyListeners()
-  }, 4000)
-}
+import type { Toast, ToastType } from './toastState'
+import { addToastListener, removeToastListener } from './toastState'
 
 export function ToastContainer() {
   const [items, setItems] = useState<Toast[]>([])
   
   useEffect(() => {
-    toastListeners.push(setItems)
+    addToastListener(setItems)
     return () => {
-      toastListeners = toastListeners.filter(fn => fn !== setItems)
+      removeToastListener(setItems)
     }
   }, [])
 

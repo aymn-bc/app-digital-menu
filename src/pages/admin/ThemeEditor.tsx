@@ -1,26 +1,70 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Card, { CardContent, CardHeader } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import { sampleRestaurants, colorPresets, fontPresets } from '@/data/mockData'
-import type { RestaurantTheme } from '@/data/mockData'
+import { getRestaurants } from '@/api/admin'
+import type { Restaurant } from '@/api/admin'
+
+// Color presets for theme customization
+const colorPresets = [
+  { name: 'Classic Red', primary: '#C8102E', secondary: '#F4B223' },
+  { name: 'Ocean Blue', primary: '#0EA5E9', secondary: '#06B6D4' },
+  { name: 'Forest Green', primary: '#16A34A', secondary: '#84CC16' },
+  { name: 'Royal Purple', primary: '#7C3AED', secondary: '#EC4899' },
+  { name: 'Sunset Orange', primary: '#EA580C', secondary: '#FBBF24' },
+  { name: 'Midnight Dark', primary: '#1E293B', secondary: '#6366F1' },
+  { name: 'Rose Gold', primary: '#BE185D', secondary: '#F472B6' },
+  { name: 'Earthy Brown', primary: '#78350F', secondary: '#D97706' },
+]
+
+// Font presets
+const fontPresets = [
+  { name: 'Inter', value: 'Inter, system-ui, sans-serif' },
+  { name: 'Poppins', value: 'Poppins, sans-serif' },
+  { name: 'Playfair Display', value: '"Playfair Display", serif' },
+  { name: 'Roboto', value: 'Roboto, sans-serif' },
+  { name: 'Montserrat', value: 'Montserrat, sans-serif' },
+  { name: 'Open Sans', value: '"Open Sans", sans-serif' },
+]
 
 export default function ThemeEditor() {
-  const [selectedRestaurant, setSelectedRestaurant] = useState(sampleRestaurants[0])
-  const [theme, setTheme] = useState<RestaurantTheme>(selectedRestaurant.theme)
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+  const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null)
+  const [theme, setTheme] = useState<Restaurant['theme'] | null>(null)
   const [hasChanges, setHasChanges] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  const updateTheme = (key: keyof RestaurantTheme, value: string | boolean) => {
-    setTheme(prev => ({ ...prev, [key]: value }))
+  useEffect(() => {
+    const fetchRestaurants = async () => {
+      try {
+        const data = await getRestaurants()
+        setRestaurants(data)
+        if (data.length > 0) {
+          setSelectedRestaurant(data[0])
+          setTheme(data[0].theme)
+        }
+      } catch (error) {
+        console.error('Failed to fetch restaurants:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchRestaurants()
+  }, [])
+
+  const updateTheme = (key: keyof Restaurant['theme'], value: string | boolean) => {
+    if (!theme) return
+    setTheme(prev => prev ? ({ ...prev, [key]: value }) : null)
     setHasChanges(true)
   }
 
   const applyPreset = (preset: { primary: string; secondary: string }) => {
-    setTheme(prev => ({ 
+    if (!theme) return
+    setTheme(prev => prev ? ({ 
       ...prev, 
       primaryColor: preset.primary, 
       secondaryColor: preset.secondary 
-    }))
+    }) : null)
     setHasChanges(true)
   }
 
@@ -28,6 +72,32 @@ export default function ThemeEditor() {
     // In real app, this would call an API
     setHasChanges(false)
     alert('Theme saved successfully!')
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[rgb(var(--text))]">Theme Editor</h1>
+            <p className="text-[rgb(var(--text-muted))]">Loading...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!selectedRestaurant || !theme) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[rgb(var(--text))]">Theme Editor</h1>
+            <p className="text-red-500">No restaurants available</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -56,7 +126,7 @@ export default function ThemeEditor() {
         <CardContent className="p-4">
           <label className="text-sm font-medium text-[rgb(var(--text))] block mb-2">Select Restaurant</label>
           <div className="flex flex-wrap gap-3">
-            {sampleRestaurants.map((restaurant) => (
+            {restaurants.map((restaurant) => (
               <button
                 key={restaurant.id}
                 onClick={() => {

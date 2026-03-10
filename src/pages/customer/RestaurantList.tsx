@@ -1,30 +1,43 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Card, CardContent, Input, Badge, Button } from '@/components/ui'
-import { sampleRestaurants } from '@/data/mockData'
-import type { Restaurant } from '@/data/mockData'
+import { getRestaurants } from '@/api/admin'
+import type { Restaurant } from '@/api/admin'
 import { useAppStore, selectSetSelectedRestaurant } from '@/store/useStore'
 
 export default function RestaurantList() {
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [query, setQuery] = useState('')
   const [cuisineFilter, setCuisineFilter] = useState<string>('all')
   const setSelectedRestaurant = useAppStore(selectSetSelectedRestaurant)
 
+  useEffect(() => {
+    const fetchRestaurants = async () => {
+      try {
+        const data = await getRestaurants()
+        setRestaurants(data)
+      } catch (error) {
+        console.error('Failed to fetch restaurants:', error)
+      }
+    }
+    fetchRestaurants()
+  }, [])
+
   // Get all unique cuisines
   const allCuisines = useMemo(() => {
     const cuisines = new Set<string>()
-    sampleRestaurants.forEach(r => r.cuisine.forEach(c => cuisines.add(c)))
+    restaurants.forEach(r => r.cuisine.forEach(c => cuisines.add(c)))
     return Array.from(cuisines).sort()
-  }, [])
+  }, [restaurants])
 
   const filteredRestaurants = useMemo(() => {
-    return sampleRestaurants.filter((restaurant) => {
+    return restaurants.filter((restaurant) => {
       const matchesQuery = restaurant.name.toLowerCase().includes(query.toLowerCase()) ||
         restaurant.description.toLowerCase().includes(query.toLowerCase())
       const matchesCuisine = cuisineFilter === 'all' || restaurant.cuisine.includes(cuisineFilter)
       return matchesQuery && matchesCuisine
     })
-  }, [query, cuisineFilter])
+  }, [query, cuisineFilter, restaurants])
 
   const handleSelectRestaurant = (restaurant: Restaurant) => {
     setSelectedRestaurant(restaurant.id)
@@ -89,7 +102,7 @@ export default function RestaurantList() {
             {/* Stats */}
             <div className="flex flex-wrap justify-center gap-8 mt-10">
               <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold">{sampleRestaurants.length}+</div>
+                <div className="text-3xl md:text-4xl font-bold">{restaurants.length}+</div>
                 <div className="text-white/70 text-sm">Restaurants</div>
               </div>
               <div className="text-center">

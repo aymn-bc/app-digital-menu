@@ -22,7 +22,9 @@ export default function RestaurantLayout() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   // Close mobile sidebar on route change
+  // This is an intentional use case where setState is called in effect for navigation UX
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileSidebarOpen(false)
   }, [location.pathname])
 

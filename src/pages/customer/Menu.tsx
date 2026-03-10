@@ -6,7 +6,8 @@ import { useAppStore, selectOnline, selectSetPending, selectSelectedRestaurant }
 import { Card, CardContent, Input, Button, Badge, SkeletonMenu, toast } from '@/components/ui'
 import Hero from '@/components/Hero'
 import ProductDetailModal from '@/components/ProductDetailModal'
-import { sampleRestaurants, sampleCategories, sampleMenuItems } from '@/data/mockData'
+import { getRestaurants, getCategories, getMenuItems } from '@/api/admin'
+import type { Restaurant, Category } from '@/api/admin'
 
 type Item = {
   id: string
@@ -36,10 +37,23 @@ export default function CustomerMenu() {
   const navigate = useNavigate()
   const selectedRestaurantId = useAppStore(selectSelectedRestaurant)
   
+  const [categories, setCategories] = useState<Category[]>([])
+  const [currentRestaurant, setCurrentRestaurant] = useState<Restaurant | null>(null)
+
   // Get the selected restaurant or redirect
-  const currentRestaurant = useMemo(() => {
-    if (!selectedRestaurantId) return null
-    return sampleRestaurants.find(r => r.id === selectedRestaurantId)
+  useEffect(() => {
+    const fetchRestaurant = async () => {
+      try {
+        const data = await getRestaurants()
+        const restaurant = data.find(r => r.id === selectedRestaurantId)
+        setCurrentRestaurant(restaurant || null)
+      } catch (error) {
+        console.error('Failed to fetch restaurants:', error)
+      }
+    }
+    if (selectedRestaurantId) {
+      fetchRestaurant()
+    }
   }, [selectedRestaurantId])
 
   // Redirect to restaurant selection if no restaurant selected
@@ -65,21 +79,19 @@ export default function CustomerMenu() {
     async function load() {
       setLoading(true)
       try {
-        const res = await api.get('/menu')
+        const [menuData, categoriesData] = await Promise.all([
+          getMenuItems(selectedRestaurantId || undefined),
+          getCategories(selectedRestaurantId || undefined)
+        ])
         if (!mounted) return
-        setItems(res.data)
-        await cacheMenu(res.data)
+        setItems(menuData as Item[])
+        setCategories(categoriesData)
+        await cacheMenu(menuData)
       } catch {
-        // Use sample data as fallback - filter by restaurant
+        // Use cached data as fallback
         const cached = await getCachedMenu()
         if (cached?.length) {
           setItems(cached as Item[])
-        } else {
-          // Use mock data for demo - all items belong to current restaurant for now
-          setItems(sampleMenuItems.map(item => ({
-            ...item,
-            restaurantId: selectedRestaurantId
-          })) as unknown as Item[])
         }
       } finally {
         setLoading(false)
@@ -102,18 +114,18 @@ export default function CustomerMenu() {
   }, [items])
 
   async function addToCart(item: Item, quantity: number = 1, notes?: string) {
-    const order = { id: `${Date.now()}-${item.id}`, items: [{ itemId: item.id, qty: quantity, notes }], total: item.price * quantity }
+    const order = { id: `${Date.now()}-${item.id}`, items: [{ itemId: item.id, qty: quantity, notes }], total: item.price * quantity, createdAt: Date.now() }
     if (online) {
       try {
         await api.post('/orders', order)
         toast(`Added ${quantity}x ${item.name} to cart!`, 'success')
       } catch {
-        await enqueueOrder(order as any)
+        await enqueueOrder(order)
         setPendingOrders((n: number) => n + 1)
         toast('Added to cart - will sync when online', 'warning')
       }
     } else {
-      await enqueueOrder(order as any)
+      await enqueueOrder(order)
       setPendingOrders((n: number) => n + 1)
       toast('Added to cart (offline)', 'info')
     }
@@ -131,7 +143,7 @@ export default function CustomerMenu() {
   // Categories with 'All' option
   const categoriesWithAll = [
     { id: 'all', name: 'All Items', icon: '🍽️', itemCount: items.length },
-    ...sampleCategories
+    ...categories
   ]
 
   // Show loading or redirect if no restaurant
