@@ -1,7 +1,8 @@
 
-import { type JSX, useState } from 'react'
+import { type JSX, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Card, Button, Badge } from '@/components/ui'
+import { generateOrders } from '@/utils/seedData'
 
 type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled'
 
@@ -23,49 +24,6 @@ interface Order {
   tableNumber?: string
   estimatedTime?: string
 }
-
-// Mock orders for demo
-const mockOrders: Order[] = [
-  {
-    id: '1',
-    orderNumber: '#ORD-2024-001',
-    date: '2024-01-29',
-    time: '12:30 PM',
-    status: 'preparing',
-    items: [
-      { id: '1', name: 'Original Recipe Chicken (4pc)', quantity: 2, price: 12.99 },
-      { id: '2', name: 'Zinger Burger', quantity: 1, price: 8.99 },
-    ],
-    total: 34.97,
-    tableNumber: '5',
-    estimatedTime: '10 mins'
-  },
-  {
-    id: '2',
-    orderNumber: '#ORD-2024-002',
-    date: '2024-01-29',
-    time: '11:15 AM',
-    status: 'ready',
-    items: [
-      { id: '3', name: 'Large Fries', quantity: 3, price: 4.49 },
-      { id: '4', name: 'Pepsi (Large)', quantity: 2, price: 2.99 },
-    ],
-    total: 19.45,
-    tableNumber: '12'
-  },
-  {
-    id: '3',
-    orderNumber: '#ORD-2024-003',
-    date: '2024-01-28',
-    time: '7:45 PM',
-    status: 'delivered',
-    items: [
-      { id: '5', name: 'Family Bucket', quantity: 1, price: 29.99 },
-    ],
-    total: 32.99,
-    tableNumber: '8'
-  },
-]
 
 const statusConfig: Record<OrderStatus, { label: string; color: 'default' | 'info' | 'warning' | 'success' | 'error'; icon: string }> = {
   pending: { label: 'Pending', color: 'default', icon: '⏳' },
@@ -95,15 +53,29 @@ function getStepStatus(orderStatus: OrderStatus, stepKey: OrderStatus): 'complet
 
 export default function OrdersPage(): JSX.Element {
   const [filter, setFilter] = useState<'active' | 'completed' | 'all'>('all')
-  const [expandedOrder, setExpandedOrder] = useState<string | null>(mockOrders[0]?.id || null)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
 
-  const filteredOrders = mockOrders.filter(order => {
+  // Initialize with generated orders
+  useEffect(() => {
+    const generatedOrders = generateOrders()
+    const transformedOrders = generatedOrders.map((o: any) => ({
+      ...o,
+      status: (['pending', 'confirmed', 'preparing', 'ready', 'delivered'] as OrderStatus[]).includes(o.status as OrderStatus)
+        ? (o.status as OrderStatus)
+        : 'pending',
+    }))
+    setOrders(transformedOrders)
+    setExpandedOrder(transformedOrders[0]?.id || null)
+  }, [])
+
+  const filteredOrders = orders.filter(order => {
     if (filter === 'active') return ['pending', 'confirmed', 'preparing', 'ready'].includes(order.status)
     if (filter === 'completed') return ['delivered', 'cancelled'].includes(order.status)
     return true
   })
 
-  if (mockOrders.length === 0) {
+  if (orders.length === 0) {
     return (
       <div className="container-app py-12">
         <div className="empty-state">

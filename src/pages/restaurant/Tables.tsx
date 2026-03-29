@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, Badge } from '@/components/ui'
+import { generateTables } from '@/utils/seedData'
 
 type TableStatus = 'available' | 'occupied' | 'reserved' | 'cleaning'
 
@@ -16,21 +17,6 @@ interface Table {
   }
 }
 
-const mockTables: Table[] = [
-  { id: 1, number: '1', capacity: 2, status: 'available' },
-  { id: 2, number: '2', capacity: 2, status: 'occupied', currentOrder: { id: '#2845', guests: 2, total: 34.99, duration: 25 } },
-  { id: 3, number: '3', capacity: 4, status: 'available' },
-  { id: 4, number: '4', capacity: 4, status: 'reserved' },
-  { id: 5, number: '5', capacity: 4, status: 'occupied', currentOrder: { id: '#2847', guests: 3, total: 67.50, duration: 12 } },
-  { id: 6, number: '6', capacity: 6, status: 'cleaning' },
-  { id: 7, number: '7', capacity: 6, status: 'available' },
-  { id: 8, number: '8', capacity: 4, status: 'occupied', currentOrder: { id: '#2844', guests: 4, total: 89.00, duration: 45 } },
-  { id: 9, number: '9', capacity: 8, status: 'available' },
-  { id: 10, number: '10', capacity: 2, status: 'reserved' },
-  { id: 11, number: '11', capacity: 4, status: 'available' },
-  { id: 12, number: '12', capacity: 6, status: 'occupied', currentOrder: { id: '#2846', guests: 5, total: 112.00, duration: 8 } },
-]
-
 const statusConfig: Record<TableStatus, { color: 'success' | 'error' | 'warning' | 'info'; label: string; bgColor: string }> = {
   available: { color: 'success', label: 'Available', bgColor: 'bg-green-500/20 border-green-500' },
   occupied: { color: 'error', label: 'Occupied', bgColor: 'bg-red-500/20 border-red-500' },
@@ -39,8 +25,13 @@ const statusConfig: Record<TableStatus, { color: 'success' | 'error' | 'warning'
 }
 
 export default function Tables() {
-  const [tables, setTables] = useState<Table[]>(mockTables)
+  const [tables, setTables] = useState<Table[]>([])
   const [selectedTable, setSelectedTable] = useState<Table | null>(null)
+
+  // Initialize with generated tables
+  useEffect(() => {
+    setTables(generateTables())
+  }, [])
 
   const stats = {
     available: tables.filter((t) => t.status === 'available').length,

@@ -1,5 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { generateUsers } from "@/utils/seedData";
+import api, { setAccessToken } from "@/api/axios";
+import { API_BASE } from "@/app/config";
 
 // User types
 export type UserRole = "admin" | "restaurant" | "customer";
@@ -13,56 +16,25 @@ export interface User {
   avatar?: string;
 }
 
-// Test users for local development
-export const TEST_USERS: Record<string, { password: string; user: User }> = {
-  "admin@example.com": {
-    password: "admin123",
-    user: {
-      id: "user-admin-001",
-      email: "admin@example.com",
-      name: "Admin User",
-      role: "admin",
-      avatar:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop",
-    },
+// Generate users from seed data - for fallback/offline mode
+const seedUsers = generateUsers();
+export const SEED_USERS: Record<string, { password: string; user: User }> = seedUsers.reduce(
+  (acc, u) => {
+    acc[u.email.toLowerCase()] = {
+      password: u.password,
+      user: {
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        role: u.role,
+        restaurantId: u.restaurantId,
+        avatar: u.avatar,
+      },
+    };
+    return acc;
   },
-  "restaurant@crispy.com": {
-    password: "restaurant123",
-    user: {
-      id: "user-rest-001",
-      email: "restaurant@crispy.com",
-      name: "Crispy Chicken Manager",
-      role: "restaurant",
-      restaurantId: "rest-001",
-      avatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
-    },
-  },
-  "restaurant@sakura.com": {
-    password: "restaurant123",
-    user: {
-      id: "user-rest-002",
-      email: "restaurant@sakura.com",
-      name: "Sakura Sushi Manager",
-      role: "restaurant",
-      restaurantId: "rest-002",
-      avatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop",
-    },
-  },
-  "restaurant@pizza.com": {
-    password: "restaurant123",
-    user: {
-      id: "user-rest-003",
-      email: "restaurant@pizza.com",
-      name: "Pizza Paradise Manager",
-      role: "restaurant",
-      restaurantId: "rest-003",
-      avatar:
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop",
-    },
-  },
-};
+  {} as Record<string, { password: string; user: User }>
+);
 
 type AuthState = {
   user: User | null;
@@ -96,16 +68,73 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
       login: async (email: string, password: string) => {
-        // Check test users
-        const testUser = TEST_USERS[email.toLowerCase()];
-        if (testUser && testUser.password === password) {
-          const token = `test-token-${Date.now()}`;
-          set({ user: testUser.user, token, isAuthenticated: true });
-          return { success: true };
+        try {
+          console.log(`[Auth] Attempting login for ${email} at ${API_BASE}`);
+          
+          // Check seed users to determine if this is an admin login
+          const seedUser = SEED_USERS[email.toLowerCase()];
+          const isAdmin = seedUser?.user.role === "admin";
+          
+          // Use appropriate endpoint based on role
+          const endpoint = isAdmin ? "/auth/admin/login" : "/auth/user/login";
+          
+          // Try to authenticate with the backend API
+          const response = await api.post(endpoint, {
+            email,
+            password,
+          });
+
+          if (response.data?.access_token) {
+            const token = response.data.access_token;
+            // Handle both admin and user response formats
+            const userData = response.data.admin || response.data.user;
+            
+            if (!userData) {
+              console.warn("[Auth] Invalid response structure from server", response.data);
+              return { success: false, error: "Invalid response from server" };
+            }
+            
+            const user: User = {
+              id: userData.id,
+              email: userData.email,
+              name: userData.firstName || userData.name || userData.email,
+              role: (userData.role || "customer").toLowerCase() as UserRole,
+              avatar: userData.avatar,
+            };
+            
+            console.log(`[Auth] Login successful for ${email} with role ${user.role}`);
+            setAccessToken(token);
+            set({ user, token, isAuthenticated: true });
+            return { success: true };
+          }
+          console.warn("[Auth] Invalid response structure from server", response.data);
+          return { success: false, error: "Invalid response from server" };
+        } catch (error: any) {
+          console.error("[Auth] API Error:", error?.response?.data || error?.message || error);
+          
+          // Fallback to seed users for offline development
+          const seedUser = SEED_USERS[email.toLowerCase()];
+          if (seedUser && seedUser.password === password) {
+            console.log(`[Auth] Fallback: Login successful for ${email} using seed data`);
+            const token = `test-token-${Date.now()}`;
+            setAccessToken(token);
+            set({ user: seedUser.user, token, isAuthenticated: true });
+            return { success: true };
+          }
+          
+          const apiError = error?.response?.data?.message || error?.message;
+          const errorMsg = apiError || "Invalid credentials";
+          console.log(`[Auth] Login failed: ${errorMsg}`);
+          return { 
+            success: false, 
+            error: errorMsg
+          };
         }
-        return { success: false, error: "Invalid credentials" };
       },
-      logout: () => set({ user: null, token: null, isAuthenticated: false }),
+      logout: () => {
+        setAccessToken(null);
+        set({ user: null, token: null, isAuthenticated: false });
+      },
       setUser: (user) => set({ user, isAuthenticated: !!user }),
     }),
     {

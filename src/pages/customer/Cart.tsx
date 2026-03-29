@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAppStore, selectOnline } from '@/store/useStore'
 import { Card, Button, Badge, toast } from '@/components/ui'
 import { useTranslation } from 'react-i18next'
+import { generateCartItems } from '@/utils/seedData'
 
 interface CartItem {
   id: string
@@ -14,45 +15,16 @@ interface CartItem {
   dietary?: string[]
 }
 
-// Mock cart items for demo - in real app this would come from zustand store
-const mockCartItems: CartItem[] = [
-  { 
-    id: '1', 
-    name: 'Original Recipe Chicken (4pc)', 
-    price: 12.99, 
-    quantity: 2, 
-    image: 'https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=200',
-  },
-  { 
-    id: '2', 
-    name: 'Zinger Burger', 
-    price: 8.99, 
-    quantity: 1, 
-    image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200',
-    dietary: ['Spicy']
-  },
-  { 
-    id: '3', 
-    name: 'Large Fries', 
-    price: 4.49, 
-    quantity: 2, 
-    image: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=200',
-    notes: 'Extra crispy' 
-  },
-  { 
-    id: '4', 
-    name: 'Pepsi (Large)', 
-    price: 2.99, 
-    quantity: 2, 
-    image: 'https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=200',
-  },
-]
-
 export default function Cart() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const online = useAppStore(selectOnline)
-  const [items, setItems] = useState<CartItem[]>(mockCartItems)
+  const [items, setItems] = useState<CartItem[]>([])
+
+  // Initialize cart with generated items
+  useEffect(() => {
+    setItems(generateCartItems())
+  }, [])
   const [promoCode, setPromoCode] = useState('')
   const [promoApplied, setPromoApplied] = useState(false)
   const [tableNumber, setTableNumber] = useState('')

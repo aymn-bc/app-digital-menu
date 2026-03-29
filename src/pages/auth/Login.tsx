@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { Card, CardContent, Input, Button, toast } from '@/components/ui'
-import { useAuthStore, TEST_USERS } from '@/store/useStore'
+import { useAuthStore } from '@/store/useStore'
 
 export default function Login() {
   const [loading, setLoading] = useState(false)
@@ -27,18 +27,20 @@ export default function Login() {
       if (result.success) {
         toast('Login successful!', 'success')
         
-        // Determine redirect based on user role
-        const testUser = TEST_USERS[email.toLowerCase()]
+        // Get user from state after login
+        const { user } = useAuthStore.getState()
+        
         if (from) {
           navigate(from, { replace: true })
-        } else if (testUser?.user.role === 'admin') {
+        } else if (user?.role === 'admin') {
           navigate('/admin', { replace: true })
-        } else if (testUser?.user.role === 'restaurant') {
+        } else if (user?.role === 'restaurant') {
           navigate('/restaurant', { replace: true })
         } else {
           navigate('/', { replace: true })
         }
       } else {
+        console.error('Login failed:', result.error)
         toast(result.error || 'Invalid credentials', 'error')
       }
     } catch {
@@ -105,22 +107,26 @@ export default function Login() {
         {/* Test Credentials */}
         <div className="mt-6 p-4 rounded-xl bg-[rgb(var(--bg-card))] border border-[rgb(var(--border))]">
           <p className="text-sm font-semibold text-[rgb(var(--text))] mb-3 flex items-center gap-2">
-            <span>🔑</span> Test Credentials
+            <span>🔑</span> Test Credentials (Password: <code className="bg-[rgb(var(--bg-elevated))] px-1 rounded">password123</code>)
           </p>
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between p-2 rounded-lg bg-[rgb(var(--bg-elevated))]">
               <div>
-                <span className="text-[rgb(var(--text-muted))]">Admin:</span>
-                <span className="ml-2 text-[rgb(var(--text))]">admin@example.com</span>
+                <span className="text-[rgb(var(--text-muted))]">Customer:</span>
+                <span className="ml-2 font-mono text-[rgb(var(--text))]">john@example.com</span>
               </div>
-              <span className="text-[rgb(var(--text-muted))]">admin123</span>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-[rgb(var(--bg-elevated))]">
               <div>
                 <span className="text-[rgb(var(--text-muted))]">Restaurant:</span>
-                <span className="ml-2 text-[rgb(var(--text))]">restaurant@crispy.com</span>
+                <span className="ml-2 font-mono text-[rgb(var(--text))]">pizza@palace.com</span>
               </div>
-              <span className="text-[rgb(var(--text-muted))]">restaurant123</span>
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-[rgb(var(--bg-elevated))]">
+              <div>
+                <span className="text-[rgb(var(--text-muted))]">Admin:</span>
+                <span className="ml-2 font-mono text-[rgb(var(--text))]">admin@example.com</span>
+              </div>
             </div>
           </div>
         </div>

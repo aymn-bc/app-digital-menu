@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui'
+import { generateKitchenOrders } from '@/utils/seedData'
 
 interface KitchenOrder {
   id: string
@@ -10,55 +11,14 @@ interface KitchenOrder {
   waitTime: number // in minutes
 }
 
-const mockKitchenOrders: KitchenOrder[] = [
-  {
-    id: '#2847',
-    table: 'Table 5',
-    items: [
-      { name: 'Original Recipe Chicken (4pc)', quantity: 1 },
-      { name: 'Hot Wings (8pc)', quantity: 1, notes: 'Extra spicy' },
-    ],
-    status: 'cooking',
-    priority: 'normal',
-    waitTime: 5,
-  },
-  {
-    id: '#2846',
-    table: 'Table 12',
-    items: [
-      { name: 'Zinger Burger', quantity: 2, notes: 'No onions' },
-      { name: 'Crispy Strips (5pc)', quantity: 1 },
-    ],
-    status: 'cooking',
-    priority: 'rush',
-    waitTime: 8,
-  },
-  {
-    id: '#2848',
-    table: 'Table 7',
-    items: [
-      { name: 'Family Bucket (12pc)', quantity: 1 },
-      { name: 'Large Coleslaw', quantity: 2 },
-    ],
-    status: 'queued',
-    priority: 'normal',
-    waitTime: 0,
-  },
-  {
-    id: '#2849',
-    table: 'Table 2',
-    items: [
-      { name: 'Popcorn Chicken', quantity: 2 },
-    ],
-    status: 'ready',
-    priority: 'normal',
-    waitTime: 12,
-  },
-]
-
 export default function KitchenDisplay() {
-  const [orders, setOrders] = useState<KitchenOrder[]>(mockKitchenOrders)
+  const [orders, setOrders] = useState<KitchenOrder[]>([])
   const [time, setTime] = useState(new Date())
+
+  // Initialize with generated kitchen orders
+  useEffect(() => {
+    setOrders(generateKitchenOrders())
+  }, [])
 
   // Update clock every second
   useEffect(() => {

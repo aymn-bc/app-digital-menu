@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, Badge } from '@/components/ui'
+import { generateOrders } from '@/utils/seedData'
 
 type OrderStatus = 'pending' | 'preparing' | 'ready' | 'served' | 'paid'
 
@@ -12,53 +13,6 @@ interface Order {
   createdAt: string
 }
 
-const mockOrders: Order[] = [
-  {
-    id: '#2847',
-    table: 'Table 5',
-    items: [
-      { name: 'Original Recipe Chicken', quantity: 2, price: 12.99 },
-      { name: 'Coleslaw', quantity: 1, price: 3.49 },
-    ],
-    status: 'preparing',
-    total: 29.47,
-    createdAt: '2 min ago',
-  },
-  {
-    id: '#2846',
-    table: 'Table 12',
-    items: [
-      { name: 'Zinger Burger', quantity: 3, price: 8.99 },
-      { name: 'Large Fries', quantity: 2, price: 4.49 },
-      { name: 'Pepsi', quantity: 3, price: 2.49 },
-    ],
-    status: 'ready',
-    total: 43.42,
-    createdAt: '5 min ago',
-  },
-  {
-    id: '#2845',
-    table: 'Table 3',
-    items: [
-      { name: 'Family Bucket', quantity: 1, price: 34.99 },
-    ],
-    status: 'served',
-    total: 34.99,
-    createdAt: '12 min ago',
-  },
-  {
-    id: '#2844',
-    table: 'Table 8',
-    items: [
-      { name: 'Hot Wings', quantity: 2, price: 7.99 },
-      { name: 'Mashed Potatoes', quantity: 1, price: 3.99 },
-    ],
-    status: 'pending',
-    total: 19.97,
-    createdAt: '1 min ago',
-  },
-]
-
 const statusConfig: Record<OrderStatus, { color: 'default' | 'warning' | 'success' | 'info'; label: string }> = {
   pending: { color: 'default', label: 'Pending' },
   preparing: { color: 'warning', label: 'Preparing' },
@@ -69,7 +23,27 @@ const statusConfig: Record<OrderStatus, { color: 'default' | 'warning' | 'succes
 
 export default function RestaurantOrders() {
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all')
-  const [orders] = useState<Order[]>(mockOrders)
+  const [orders, setOrders] = useState<Order[]>([])
+
+  // Initialize with generated orders
+  useEffect(() => {
+    const generatedOrders = generateOrders()
+    setOrders(
+      generatedOrders.map((o: any) => ({
+        ...o,
+        table: o.tableNumber ? `Table ${o.tableNumber}` : 'Unknown',
+        items: o.items.map((item: any) => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        status: (['pending', 'preparing', 'ready', 'served'] as OrderStatus[]).includes(o.status as OrderStatus)
+          ? (o.status as OrderStatus)
+          : 'pending',
+        createdAt: new Date(o.date + ' ' + o.time).toLocaleString(),
+      }))
+    )
+  }, [])
 
   const filteredOrders = filter === 'all' ? orders : orders.filter((o) => o.status === filter)
 
