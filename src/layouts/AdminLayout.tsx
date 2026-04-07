@@ -5,7 +5,6 @@ import { useState } from 'react'
 
 // Admin can only manage appearance - NO access to profits/financial data
 const menuItems = [
-  { path: '/admin', icon: '📊', label: 'Dashboard', description: 'Overview of restaurants' },
   { path: '/admin/users', icon: '👥', label: 'Users', description: 'Manage all users' },
   { path: '/admin/restaurants', icon: '🏪', label: 'Restaurants', description: 'Manage restaurant list' },
   { path: '/admin/themes', icon: '🎨', label: 'Theme Editor', description: 'Customize colors & styles' },

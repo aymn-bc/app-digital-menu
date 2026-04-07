@@ -7,6 +7,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
+  const [backendError, setBackendError] = useState<string>('')
   const navigate = useNavigate()
   const location = useLocation()
   const login = useAuthStore((state) => state.login)
@@ -14,12 +16,40 @@ export default function Login() {
   // Get the intended destination or default based on role
   const from = location.state?.from?.pathname
 
+  // Email validation regex
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!email || !password) {
-      toast('Please fill in all fields', 'error')
+    const newErrors: { email?: string; password?: string } = {}
+
+    // Validate email
+    if (!email) {
+      newErrors.email = 'Email is required'
+    } else if (!isValidEmail(email)) {
+      newErrors.email = 'Please enter a valid email address'
+    }
+
+    // Validate password
+    if (!password) {
+      newErrors.password = 'Password is required'
+    } else if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters'
+    }
+
+    setErrors(newErrors)
+
+    // If there are validation errors, don't submit
+    if (Object.keys(newErrors).length > 0) {
+      toast('Please fix the errors below', 'error')
       return
     }
+    
+    // Clear previous backend errors
+    setBackendError('')
     
     setLoading(true)
     try {
@@ -40,11 +70,16 @@ export default function Login() {
           navigate('/', { replace: true })
         }
       } else {
-        console.error('Login failed:', result.error)
-        toast(result.error || 'Invalid credentials', 'error')
+        const errorMsg = result.error || 'Invalid credentials'
+        console.error('Login failed:', errorMsg)
+        setBackendError(errorMsg)
+        toast(errorMsg, 'error')
       }
-    } catch {
-      toast('Login failed. Please try again.', 'error')
+    } catch (error: any) {
+      const errorMsg = error?.response?.data?.message || error?.message || 'Login failed. Please try again.'
+      console.error('Login error:', error)
+      setBackendError(errorMsg)
+      toast(errorMsg, 'error')
     } finally {
       setLoading(false)
     }
@@ -70,7 +105,12 @@ export default function Login() {
                 type="email"
                 placeholder="admin@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  // Clear error when user starts typing
+                  if (errors.email) setErrors({ ...errors, email: undefined })
+                }}
+                error={errors.email}
                 icon={
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
@@ -83,13 +123,27 @@ export default function Login() {
                 type="password"
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  // Clear error when user starts typing
+                  if (errors.password) setErrors({ ...errors, password: undefined })
+                }}
+                error={errors.password}
                 icon={
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                 }
               />
+
+              {backendError && (
+                <div className="p-3 rounded-lg bg-[rgb(var(--error))]/10 border border-[rgb(var(--error))]/30">
+                  <p className="text-sm text-[rgb(var(--error))] font-medium">
+                    <span className="inline-block mr-2">⚠️</span>
+                    {backendError}
+                  </p>
+                </div>
+              )}
 
               <Button type="submit" loading={loading} className="w-full" size="lg">
                 Sign in

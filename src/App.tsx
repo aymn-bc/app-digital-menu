@@ -21,7 +21,6 @@ import Subscription from '@/pages/restaurant/Subscription'
 import Branding from '@/pages/restaurant/Branding'
 
 // Admin Pages
-import AdminDashboard from '@/pages/admin/AdminDashboard'
 import ThemeEditor from '@/pages/admin/ThemeEditor'
 import Users from '@/pages/admin/Users'
 
@@ -79,7 +78,7 @@ export default function App() {
           <AdminLayout />
         </ProtectedRoute>
       }>
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
         <Route path="/admin/users" element={<Users />} />
         <Route path="/admin/restaurants" element={<ComingSoon title="Restaurant List" />} />
         <Route path="/admin/themes" element={<ThemeEditor />} />

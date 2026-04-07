@@ -169,9 +169,16 @@ export const useAuthStore = create<AuthState>()(
             return { success: true };
           }
 
+          // Extract error message from API response or use default
+          const errorMessage = 
+            error?.response?.data?.message ||
+            error?.response?.data?.error ||
+            error?.message ||
+            "Invalid email or password";
+
           return {
             success: false,
-            error: "Invalid email or password",
+            error: errorMessage,
           };
         }
       },

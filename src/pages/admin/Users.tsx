@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, Button, Badge, Input, toast, Modal } from '@/components/ui'
+import api from '@/api/axios'
+import { useAuthStore } from '@/store/useStore'
 
 interface User {
   id: string
@@ -71,6 +73,10 @@ export default function AdminUsers() {
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  
+  // Get token from auth store
+  const token = useAuthStore(state => state.token)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -80,6 +86,37 @@ export default function AdminUsers() {
     subscriptionStatus: 'trial' as User['subscriptionStatus'],
     subscriptionEnd: '',
   })
+
+  // Fetch users from API on component mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setIsLoading(true)
+        if (!token) {
+          console.warn('No token available, using local data')
+          setIsLoading(false)
+          return
+        }
+        console.log('Fetching users with token:', token.substring(0, 20) + '...')
+        const response = await api.get('/users')
+        console.log('Users fetched successfully:', response.data)
+        if (response.data) {
+          setUsers(response.data)
+        }
+      } catch (error: any) {
+        console.error('Failed to fetch users:', error)
+        console.error('Error status:', error?.response?.status)
+        console.error('Error data:', error?.response?.data)
+        console.error('Error message:', error?.message)
+        toast('Failed to load users from server', 'error')
+        // Keep using initial users on error
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchUsers()
+  }, [token])
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

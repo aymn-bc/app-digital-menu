@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { useAppStore, selectLanguage, useCartStore } from "@/store/useStore"
+import { useCartStore } from "@/store/useStore"
 import { Card, CardContent, Input, Button, toast } from "@/components/ui"
 
 type Item = {
@@ -15,7 +15,6 @@ type Item = {
 export default function CustomerMenu() {
   const navigate = useNavigate()
   const { restaurantId } = useParams()
-  const language = useAppStore(selectLanguage)
   const { addItem } = useCartStore()
 
   const [items, setItems] = useState<Item[]>([])

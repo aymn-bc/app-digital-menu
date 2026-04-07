@@ -228,6 +228,8 @@ export async function register(userData: {
   name: string;
   email: string;
   password: string;
+  address?: string;
+  phone?: string;
   role?: "customer" | "restaurant";
 }): Promise<{ user: User; access_token: string }> {
   // Backend auth routes may vary by implementation, so try resolved paths in order.
