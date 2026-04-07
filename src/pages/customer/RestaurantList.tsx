@@ -1,23 +1,32 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { Card, CardContent, Input, Badge, Button } from '@/components/ui'
 import { getRestaurants } from '@/api/admin'
 import type { Restaurant } from '@/api/admin'
-import { useAppStore, selectSetSelectedRestaurant } from '@/store/useStore'
+import { generateRestaurants } from '@/utils/seedData'
+import RestaurantQuickOrderModal from '@/components/RestaurantQuickOrderModal'
 
 export default function RestaurantList() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [query, setQuery] = useState('')
   const [cuisineFilter, setCuisineFilter] = useState<string>('all')
-  const setSelectedRestaurant = useAppStore(selectSetSelectedRestaurant)
+  const [selectedRestaurantForOrder, setSelectedRestaurantForOrder] = useState<Restaurant | null>(null)
+  const [isQuickOrderOpen, setIsQuickOrderOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
         const data = await getRestaurants()
-        setRestaurants(data)
+        if (data && data.length > 0) {
+          setRestaurants(data)
+        } else {
+          setRestaurants(generateRestaurants())
+        }
       } catch (error) {
         console.error('Failed to fetch restaurants:', error)
+        setRestaurants(generateRestaurants())
+      } finally {
+        setIsLoading(false)
       }
     }
     fetchRestaurants()
@@ -26,47 +35,58 @@ export default function RestaurantList() {
   // Get all unique cuisines
   const allCuisines = useMemo(() => {
     const cuisines = new Set<string>()
-    restaurants.forEach(r => r.cuisine.forEach(c => cuisines.add(c)))
+    if (restaurants && restaurants.length > 0) {
+      restaurants.forEach(r => {
+        if (r.cuisine && r.cuisine.length > 0) {
+          r.cuisine.forEach(c => cuisines.add(c))
+        }
+      })
+    }
     return Array.from(cuisines).sort()
   }, [restaurants])
 
   const filteredRestaurants = useMemo(() => {
+    if (!restaurants || restaurants.length === 0) return []
     return restaurants.filter((restaurant) => {
       const matchesQuery = restaurant.name.toLowerCase().includes(query.toLowerCase()) ||
-        restaurant.description.toLowerCase().includes(query.toLowerCase())
-      const matchesCuisine = cuisineFilter === 'all' || restaurant.cuisine.includes(cuisineFilter)
+        restaurant.description?.toLowerCase().includes(query.toLowerCase()) || false
+      const matchesCuisine = cuisineFilter === 'all' || (restaurant.cuisine && restaurant.cuisine.includes(cuisineFilter))
       return matchesQuery && matchesCuisine
     })
   }, [query, cuisineFilter, restaurants])
 
-  const handleSelectRestaurant = (restaurant: Restaurant) => {
-    setSelectedRestaurant(restaurant.id)
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[rgb(var(--primary))] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[rgb(var(--text-muted))]">Loading restaurants...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-[rgb(var(--primary))] via-[rgb(var(--primary-dark))] to-[rgb(var(--accent))] text-white overflow-hidden">
-        {/* Background Pattern */}
+      <section className="relative bg-linear-to-br from-[rgb(var(--primary))] via-[rgb(var(--primary-dark))] to-[rgb(var(--accent))] text-white overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }} />
         </div>
         
-        {/* Decorative Elements */}
         <div className="absolute top-20 left-10 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-[rgb(var(--secondary))]/20 rounded-full blur-3xl" />
         
         <div className="relative container mx-auto px-4 py-16 md:py-24">
           <div className="max-w-3xl mx-auto text-center">
-            {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm mb-6">
               <span className="text-xl">🍽️</span>
               <span className="text-sm font-medium">Discover Local Restaurants</span>
             </div>
             
-            {/* Main Heading */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 leading-tight">
               Delicious Food,
               <br />
@@ -78,7 +98,6 @@ export default function RestaurantList() {
               and delivered right to your doorstep.
             </p>
             
-            {/* Search Bar */}
             <div className="max-w-xl mx-auto">
               <div className="relative">
                 <Input
@@ -99,7 +118,6 @@ export default function RestaurantList() {
               </div>
             </div>
             
-            {/* Stats */}
             <div className="flex flex-wrap justify-center gap-8 mt-10">
               <div className="text-center">
                 <div className="text-3xl md:text-4xl font-bold">{restaurants.length}+</div>
@@ -121,7 +139,6 @@ export default function RestaurantList() {
           </div>
         </div>
         
-        {/* Wave Separator */}
         <div className="absolute bottom-0 left-0 right-0">
           <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path 
@@ -132,9 +149,7 @@ export default function RestaurantList() {
         </div>
       </section>
 
-      {/* Main Content */}
       <section className="container mx-auto px-4 py-8">
-        {/* Cuisine Filters */}
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-[rgb(var(--text))] mb-4">Filter by Cuisine</h2>
           <div className="flex flex-wrap gap-2">
@@ -164,18 +179,19 @@ export default function RestaurantList() {
           </div>
         </div>
 
-        {/* Restaurant Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredRestaurants.map((restaurant) => (
             <RestaurantCard 
               key={restaurant.id} 
               restaurant={restaurant} 
-              onSelect={handleSelectRestaurant}
+              onOrderClick={() => {
+                setSelectedRestaurantForOrder(restaurant)
+                setIsQuickOrderOpen(true)
+              }}
             />
           ))}
         </div>
 
-        {/* Empty State */}
         {filteredRestaurants.length === 0 && (
           <div className="text-center py-16">
             <div className="w-24 h-24 rounded-full bg-[rgb(var(--bg-elevated))] flex items-center justify-center mx-auto mb-4">
@@ -187,25 +203,31 @@ export default function RestaurantList() {
             </p>
           </div>
         )}
+
+        <RestaurantQuickOrderModal
+          restaurant={selectedRestaurantForOrder}
+          isOpen={isQuickOrderOpen}
+          onClose={() => {
+            setIsQuickOrderOpen(false)
+            setSelectedRestaurantForOrder(null)
+          }}
+        />
       </section>
     </div>
   )
 }
 
-// Restaurant Card Component
-function RestaurantCard({ restaurant, onSelect }: { restaurant: Restaurant; onSelect: (r: Restaurant) => void }) {
+function RestaurantCard({ restaurant, onOrderClick }: { restaurant: Restaurant; onOrderClick: () => void }) {
   return (
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group">
-      {/* Cover Image */}
       <div className="relative h-48 overflow-hidden">
         <img
           src={restaurant.coverImage}
           alt={restaurant.name}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
         
-        {/* Logo */}
         <div className="absolute bottom-4 left-4 flex items-center gap-3">
           <img
             src={restaurant.logo}
@@ -222,7 +244,6 @@ function RestaurantCard({ restaurant, onSelect }: { restaurant: Restaurant; onSe
           </div>
         </div>
 
-        {/* Status Badge */}
         <div className="absolute top-4 right-4">
           <Badge variant={restaurant.isOpen ? 'success' : 'error'}>
             {restaurant.isOpen ? 'Open' : 'Closed'}
@@ -231,9 +252,8 @@ function RestaurantCard({ restaurant, onSelect }: { restaurant: Restaurant; onSe
       </div>
 
       <CardContent className="p-4">
-        {/* Cuisine Tags */}
         <div className="flex flex-wrap gap-2 mb-3">
-          {restaurant.cuisine.slice(0, 3).map((c) => (
+          {restaurant.cuisine?.slice(0, 3).map((c) => (
             <span 
               key={c} 
               className="px-2 py-1 text-xs rounded-md bg-[rgb(var(--bg-elevated))] text-[rgb(var(--text-muted))]"
@@ -243,12 +263,10 @@ function RestaurantCard({ restaurant, onSelect }: { restaurant: Restaurant; onSe
           ))}
         </div>
 
-        {/* Description */}
         <p className="text-sm text-[rgb(var(--text-muted))] line-clamp-2 mb-4">
           {restaurant.description}
         </p>
 
-        {/* Info Row */}
         <div className="flex items-center justify-between text-sm text-[rgb(var(--text-muted))] mb-4">
           <div className="flex items-center gap-1">
             <span>🕐</span>
@@ -256,20 +274,21 @@ function RestaurantCard({ restaurant, onSelect }: { restaurant: Restaurant; onSe
           </div>
           <div className="flex items-center gap-1">
             <span>🚚</span>
-            <span>${restaurant.deliveryFee.toFixed(2)}</span>
+            <span>{restaurant.deliveryFee?.toFixed(2)} TND</span>
           </div>
           <div className="flex items-center gap-1">
             <span>💵</span>
-            <span>Min ${restaurant.minimumOrder}</span>
+            <span>Min {restaurant.minimumOrder?.toFixed(2)} TND</span>
           </div>
         </div>
 
-        {/* Action Button */}
-        <Link to="/menu" onClick={() => onSelect(restaurant)}>
-          <Button fullWidth variant="primary">
-            View Menu
-          </Button>
-        </Link>
+        <Button
+          fullWidth
+          variant="primary"
+          onClick={onOrderClick}
+        >
+          Order from {restaurant.name}
+        </Button>
       </CardContent>
     </Card>
   )

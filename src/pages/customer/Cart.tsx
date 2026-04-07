@@ -1,55 +1,30 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAppStore, selectOnline } from '@/store/useStore'
+import { useAppStore, selectOnline, selectSelectedRestaurant, useCartStore } from '@/store/useStore'
 import { Card, Button, Badge, toast } from '@/components/ui'
 import { useTranslation } from 'react-i18next'
-import { generateCartItems } from '@/utils/seedData'
-
-interface CartItem {
-  id: string
-  name: string
-  price: number
-  quantity: number
-  image: string
-  notes?: string
-  dietary?: string[]
-}
+import { createOrder } from '@/api/admin'
 
 export default function Cart() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const online = useAppStore(selectOnline)
-  const [items, setItems] = useState<CartItem[]>([])
+  const selectedRestaurantId = useAppStore(selectSelectedRestaurant)
 
-  // Initialize cart with generated items
-  useEffect(() => {
-    setItems(generateCartItems())
-  }, [])
+  // Use persistent cart store
+  const { items, updateQuantity, removeItem, clearCart, getTotal } = useCartStore()
+
   const [promoCode, setPromoCode] = useState('')
   const [promoApplied, setPromoApplied] = useState(false)
   const [tableNumber, setTableNumber] = useState('')
   const [orderType, setOrderType] = useState<'dine-in' | 'takeaway'>('dine-in')
   const [isCheckingOut, setIsCheckingOut] = useState(false)
 
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  // Calculate totals
+  const subtotal = getTotal()
   const discount = promoApplied ? subtotal * 0.1 : 0 // 10% discount
   const tax = (subtotal - discount) * 0.1 // 10% tax
   const total = subtotal - discount + tax
-
-  const updateQuantity = (id: string, delta: number) => {
-    setItems(
-      items
-        .map((item) =>
-          item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item
-        )
-        .filter((item) => item.quantity > 0)
-    )
-  }
-
-  const removeItem = (id: string) => {
-    setItems(items.filter((item) => item.id !== id))
-    toast('Item removed', 'info')
-  }
 
   const applyPromo = () => {
     if (promoCode.toLowerCase() === 'save10') {
@@ -60,20 +35,88 @@ export default function Cart() {
     }
   }
 
+  const LOCAL_ORDERS_KEY = 'digimenu-local-orders'
+
+  const saveLocalOrder = (newOrder: any) => {
+    try {
+      const existing = JSON.parse(localStorage.getItem(LOCAL_ORDERS_KEY) || '[]') as any[]
+      const updated = [newOrder, ...existing]
+      localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify(updated))
+    } catch (err) {
+      console.error('Failed to save local order', err)
+    }
+  }
+
   const handleCheckout = async () => {
-    if (orderType === 'dine-in' && !tableNumber) {
+    if (items.length === 0) {
+      toast('Your cart is empty', 'error')
+      return
+    }
+    
+    if (!selectedRestaurantId) {
+      toast('Please select a restaurant first', 'warning')
+      navigate('/')
+      return
+    }
+    
+    if (orderType === 'dine-in' && !tableNumber.trim()) {
       toast('Please enter your table number', 'warning')
       return
     }
 
     setIsCheckingOut(true)
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    toast('Order placed successfully! 🎉', 'success')
-    setIsCheckingOut(false)
-    navigate('/orders')
+    const orderData = {
+      restaurantId: selectedRestaurantId,
+      items: items.map(item => ({
+        menuItemId: item.id,
+        quantity: item.quantity,
+        specialInstructions: item.notes || undefined
+      })),
+      tableId: orderType === 'dine-in' ? tableNumber : undefined,
+      orderType: (orderType === 'dine-in' ? 'dine-in' : 'takeout') as 'dine-in' | 'takeout' | 'delivery',
+      specialNotes: '',
+      promoCode: promoApplied ? promoCode : undefined
+    }
+
+    try {
+      await createOrder(orderData)
+      toast('🎉 Order placed successfully! Redirecting to orders...', 'success')
+      clearCart()
+      setTimeout(() => {
+        navigate('/orders')
+      }, 1500)
+    } catch (error: any) {
+      console.error('Order submission error:', error)
+
+      // Fallback to local order queue if API isn't available
+      const localOrder = {
+        id: `local-${Date.now()}`,
+        userId: 'offline-user',
+        restaurantId: selectedRestaurantId,
+        items: items.map(item => ({
+          menuItemId: item.id,
+          quantity: item.quantity,
+          specialInstructions: item.notes || undefined
+        })),
+        total: total,
+        status: 'pending',
+        orderType: orderType === 'dine-in' ? 'dine-in' : 'takeout',
+        specialNotes: '',
+        promoCode: promoApplied ? promoCode : undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      saveLocalOrder(localOrder)
+      clearCart()
+      toast('📡 Network error: order saved locally and will sync when online', 'success')
+      setTimeout(() => {
+        navigate('/orders')
+      }, 800)
+    } finally {
+      setIsCheckingOut(false)
+    }
   }
 
   if (items.length === 0) {
@@ -160,7 +203,7 @@ export default function Cart() {
           <div className="space-y-3">
             {items.map((item, idx) => (
               <Card 
-                key={item.id} 
+                key={item.cartItemId} 
                 className="p-4 hover:shadow-lg transition-all stagger-item overflow-hidden"
                 style={{ animationDelay: `${idx * 50}ms` }}
               >
@@ -181,7 +224,7 @@ export default function Cart() {
                         <h3 className="font-semibold text-[rgb(var(--text))] line-clamp-1">{item.name}</h3>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-lg font-bold text-[rgb(var(--primary))]">
-                            ${item.price.toFixed(2)}
+                            {item.price.toFixed(2)} TND
                           </span>
                           {item.dietary && item.dietary.map(d => (
                             <Badge key={d} variant="warning">{d}</Badge>
@@ -196,7 +239,7 @@ export default function Cart() {
                       
                       {/* Remove Button */}
                       <button
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => removeItem(item.cartItemId)}
                         className="w-8 h-8 rounded-full flex items-center justify-center text-[rgb(var(--text-muted))] hover:text-red-500 hover:bg-red-50 transition-all"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,18 +252,18 @@ export default function Cart() {
                     <div className="flex items-center justify-between mt-3">
                       <div className="qty-selector">
                         <button 
-                          onClick={() => updateQuantity(item.id, -1)}
+                          onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
                           disabled={item.quantity <= 1}
                         >
                           −
                         </button>
                         <span>{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.id, 1)}>
+                        <button onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}>
                           +
                         </button>
                       </div>
                       <span className="font-bold text-[rgb(var(--text))]">
-                        ${(item.price * item.quantity).toFixed(2)}
+                        {(item.price * item.quantity).toFixed(2)} TND
                       </span>
                     </div>
                   </div>
@@ -298,32 +341,34 @@ export default function Cart() {
             <div className="space-y-3 py-4 border-t border-[rgb(var(--border))]">
               <div className="flex justify-between text-[rgb(var(--text-muted))]">
                 <span>Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>{subtotal.toFixed(2)} TND</span>
               </div>
               {promoApplied && (
                 <div className="flex justify-between text-green-600">
                   <span>Discount (10%)</span>
-                  <span>-${discount.toFixed(2)}</span>
+                  <span>-{discount.toFixed(2)} TND</span>
                 </div>
               )}
               <div className="flex justify-between text-[rgb(var(--text-muted))]">
                 <span>Tax (10%)</span>
-                <span>${tax.toFixed(2)}</span>
+                <span>{tax.toFixed(2)} TND</span>
               </div>
               <div className="flex justify-between text-lg font-bold text-[rgb(var(--text))] pt-3 border-t border-[rgb(var(--border))]">
                 <span>Total</span>
-                <span className="text-[rgb(var(--primary))]">${total.toFixed(2)}</span>
+                <span className="text-[rgb(var(--primary))]">{total.toFixed(2)} TND</span>
               </div>
             </div>
 
             {/* Checkout Button */}
-            <Button 
-              onClick={handleCheckout}
-              className="w-full mt-6 h-14 text-lg font-bold"
-              loading={isCheckingOut}
-            >
-              {isCheckingOut ? 'Placing Order...' : `Place Order • $${total.toFixed(2)}`}
-            </Button>
+            <div className="flex justify-center mt-6">
+              <Button 
+                onClick={handleCheckout}
+                className="w-full max-w-xs mx-auto h-14 text-base font-semibold py-4"
+                loading={isCheckingOut}
+              >
+                {isCheckingOut ? 'Placing Order...' : `Place Order • ${total.toFixed(2)} TND`}
+              </Button>
+            </div>
 
             {/* Trust Badges */}
             <div className="mt-6 flex items-center justify-center gap-4 text-xs text-[rgb(var(--text-muted))]">

@@ -1,29 +1,11 @@
 
 import { type JSX, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Card, Button, Badge } from '@/components/ui'
-import { generateOrders } from '@/utils/seedData'
+import { Card, Button, Badge, toast } from '@/components/ui'
+import { getUserOrders, cancelOrder } from '@/api/admin'
+import type { Order } from '@/api/admin'
 
 type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled'
-
-interface OrderItem {
-  id: string
-  name: string
-  quantity: number
-  price: number
-}
-
-interface Order {
-  id: string
-  orderNumber: string
-  date: string
-  time: string
-  status: OrderStatus
-  items: OrderItem[]
-  total: number
-  tableNumber?: string
-  estimatedTime?: string
-}
 
 const statusConfig: Record<OrderStatus, { label: string; color: 'default' | 'info' | 'warning' | 'success' | 'error'; icon: string }> = {
   pending: { label: 'Pending', color: 'default', icon: '⏳' },
@@ -55,18 +37,43 @@ export default function OrdersPage(): JSX.Element {
   const [filter, setFilter] = useState<'active' | 'completed' | 'all'>('all')
   const [orders, setOrders] = useState<Order[]>([])
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Initialize with generated orders
+  // Fetch orders from API
   useEffect(() => {
-    const generatedOrders = generateOrders()
-    const transformedOrders = generatedOrders.map((o: any) => ({
-      ...o,
-      status: (['pending', 'confirmed', 'preparing', 'ready', 'delivered'] as OrderStatus[]).includes(o.status as OrderStatus)
-        ? (o.status as OrderStatus)
-        : 'pending',
-    }))
-    setOrders(transformedOrders)
-    setExpandedOrder(transformedOrders[0]?.id || null)
+    const LOCAL_ORDERS_KEY = 'digimenu-local-orders'
+
+    const fetchOrders = async () => {
+      try {
+        setLoading(true)
+        const data = await getUserOrders()
+        setOrders(data)
+        if (data.length > 0) {
+          setExpandedOrder(data[0].id)
+        }
+      } catch (error) {
+        console.error('Failed to fetch orders:', error)
+        const stored = localStorage.getItem(LOCAL_ORDERS_KEY)
+        if (stored) {
+          try {
+            const localOrders = JSON.parse(stored) as Order[]
+            setOrders(localOrders)
+            if (localOrders.length > 0) {
+              setExpandedOrder(localOrders[0].id)
+            }
+            toast('Loaded saved local orders (offline mode)', 'info')
+          } catch (err) {
+            console.error('Unable to parse local orders', err)
+            toast('Failed to load orders', 'error')
+          }
+        } else {
+          toast('Failed to load orders', 'error')
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchOrders()
   }, [])
 
   const filteredOrders = orders.filter(order => {
@@ -74,6 +81,35 @@ export default function OrdersPage(): JSX.Element {
     if (filter === 'completed') return ['delivered', 'cancelled'].includes(order.status)
     return true
   })
+
+  const handleCancelOrder = async (orderId: string) => {
+    try {
+      await cancelOrder(orderId)
+      toast('Order cancelled successfully', 'success')
+      // Refresh orders
+      const data = await getUserOrders()
+      setOrders(data)
+    } catch (error: any) {
+      console.error('Cancel failed:', error)
+      toast(error.response?.data?.message || 'Failed to cancel order', 'error')
+    }
+  }
+
+  const handleViewReceipt = (order: Order) => {
+    // For now, just show a toast. In real app, open receipt modal or page
+    toast(`Receipt for Order #${order.id}: Total ${order.total.toFixed(2)} TND`, 'info')
+  }
+
+  if (loading) {
+    return (
+      <div className="container-app py-12">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-[rgb(var(--primary))] border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-[rgb(var(--text-muted))]">Loading orders...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (orders.length === 0) {
     return (
@@ -160,18 +196,18 @@ export default function OrdersPage(): JSX.Element {
                   
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-[rgb(var(--text))]">{order.orderNumber}</span>
+                      <span className="font-bold text-[rgb(var(--text))]">Order #{order.id}</span>
                       <Badge variant={status.color}>{status.label}</Badge>
                     </div>
                     <div className="text-sm text-[rgb(var(--text-muted))] mt-1">
-                      {order.date} at {order.time} • Table {order.tableNumber}
+                      {new Date(order.createdAt).toLocaleDateString()} at {new Date(order.createdAt).toLocaleTimeString()} • {order.orderType} {order.tableId ? `• Table ${order.tableId}` : ''}
                     </div>
                   </div>
                 </div>
                 
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <div className="font-bold text-[rgb(var(--text))]">${order.total.toFixed(2)}</div>
+                    <div className="font-bold text-[rgb(var(--text))]">{order.total.toFixed(2)} TND</div>
                     <div className="text-xs text-[rgb(var(--text-muted))]">{order.items.length} items</div>
                   </div>
                   <svg 
@@ -193,11 +229,6 @@ export default function OrdersPage(): JSX.Element {
                     <div className="p-6 bg-[rgb(var(--bg-elevated))/0.3]">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-semibold text-[rgb(var(--text))]">Order Progress</h4>
-                        {order.estimatedTime && (
-                          <span className="text-sm text-[rgb(var(--primary))] font-medium">
-                            ⏱️ Est. {order.estimatedTime}
-                          </span>
-                        )}
                       </div>
                       
                       {/* Progress Steps */}
@@ -237,10 +268,15 @@ export default function OrdersPage(): JSX.Element {
                             <span className="w-6 h-6 rounded-full bg-[rgb(var(--bg-elevated))] flex items-center justify-center text-xs font-bold text-[rgb(var(--text-muted))]">
                               {item.quantity}×
                             </span>
-                            <span className="text-[rgb(var(--text))]">{item.name}</span>
+                            <span className="text-[rgb(var(--text))]">Item {item.menuItemId}</span>
+                            {item.specialInstructions && (
+                              <span className="text-xs text-[rgb(var(--text-muted))] italic">
+                                "{item.specialInstructions}"
+                              </span>
+                            )}
                           </div>
                           <span className="font-medium text-[rgb(var(--text))]">
-                            ${(item.price * item.quantity).toFixed(2)}
+                            {(item.price * item.quantity).toFixed(2)} TND
                           </span>
                         </div>
                       ))}
@@ -248,12 +284,12 @@ export default function OrdersPage(): JSX.Element {
                     
                     {/* Order Actions */}
                     <div className="flex gap-3 mt-4 pt-4 border-t border-[rgb(var(--border))]">
-                      <Button variant="secondary" size="sm" className="flex-1">
+                      <Button variant="secondary" size="sm" className="flex-1" onClick={() => handleViewReceipt(order)}>
                         <span className="mr-2">📋</span>
                         View Receipt
                       </Button>
-                      {isActive && (
-                        <Button variant="ghost" size="sm" className="text-red-500 hover:bg-red-50">
+                      {isActive && order.status !== 'cancelled' && (
+                        <Button variant="ghost" size="sm" className="text-red-500 hover:bg-red-50" onClick={() => handleCancelOrder(order.id)}>
                           Cancel Order
                         </Button>
                       )}

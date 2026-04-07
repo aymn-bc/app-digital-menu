@@ -27,6 +27,7 @@ import Users from '@/pages/admin/Users'
 
 // Auth & Protection
 import AuthPage from '@/pages/auth/Login'
+import RegisterPage from '@/pages/auth/Register'
 import ProtectedRoute from '@/components/ProtectedRoute'
 
 import './App.css'
@@ -50,6 +51,7 @@ export default function App() {
       {/* Customer Routes - with Outlet in CustomerLayout */}
       <Route element={<CustomerLayout />}>
         <Route path="/" element={<RestaurantList />} />
+        <Route path="/menu/:restaurantId" element={<CustomerMenu />} />
         <Route path="/menu" element={<CustomerMenu />} />
         <Route path="/cart" element={<CustomerCart />} />
         <Route path="/orders" element={<CustomerOrders />} />
@@ -90,6 +92,7 @@ export default function App() {
       
       {/* Auth */}
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -20,6 +20,8 @@ export default function AdminLayout() {
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
 
   const isActive = (path: string) => {
     if (path === '/admin') return location.pathname === '/admin'
@@ -193,16 +195,81 @@ export default function AdminLayout() {
             </div>
 
             {/* Notifications */}
-            <button className="relative p-2 rounded-lg hover:bg-[rgb(var(--bg-elevated))] text-[rgb(var(--text-muted))]">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[rgb(var(--primary))] rounded-full" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 rounded-lg hover:bg-[rgb(var(--bg-elevated))] text-[rgb(var(--text-muted))] hover:text-[rgb(var(--text))]"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[rgb(var(--primary))] rounded-full" />
+              </button>
+              
+              {showNotifications && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowNotifications(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-[rgb(var(--bg-card))] border border-[rgb(var(--border))] rounded-xl shadow-xl z-20">
+                    <div className="p-4 border-b border-[rgb(var(--border))]">
+                      <h3 className="font-semibold text-[rgb(var(--text))]">Notifications</h3>
+                    </div>
+                    <div className="p-4">
+                      <div className="text-center py-8">
+                        <div className="w-12 h-12 rounded-full bg-[rgb(var(--bg-elevated))] flex items-center justify-center mx-auto mb-3">
+                          <svg className="w-6 h-6 text-[rgb(var(--text-muted))]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                          </svg>
+                        </div>
+                        <p className="text-[rgb(var(--text-muted))] text-sm">No new notifications</p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Profile */}
-            <div className="w-9 h-9 rounded-full bg-[rgb(var(--primary))] flex items-center justify-center text-white font-bold text-sm cursor-pointer hover:ring-2 hover:ring-[rgb(var(--primary))]/30 transition-all">
-              A
+            <div className="relative">
+              <button 
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="w-9 h-9 rounded-full bg-[rgb(var(--primary))] flex items-center justify-center text-white font-bold text-sm hover:ring-2 hover:ring-[rgb(var(--primary))]/30 transition-all"
+              >
+                A
+              </button>
+              
+              {showProfileMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowProfileMenu(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-[rgb(var(--bg-card))] border border-[rgb(var(--border))] rounded-xl shadow-xl z-20">
+                    <div className="p-4 border-b border-[rgb(var(--border))]">
+                      <p className="font-semibold text-[rgb(var(--text))]">Admin User</p>
+                      <p className="text-sm text-[rgb(var(--text-muted))]">admin@example.com</p>
+                    </div>
+                    <div className="p-2">
+                      <Link
+                        to="/restaurant"
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-[rgb(var(--text))] hover:bg-[rgb(var(--bg-elevated))] rounded-lg"
+                        onClick={() => setShowProfileMenu(false)}
+                      >
+                        <span>🏪</span> Restaurant View
+                      </Link>
+                      <Link
+                        to="/"
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-[rgb(var(--text))] hover:bg-[rgb(var(--bg-elevated))] rounded-lg"
+                        onClick={() => setShowProfileMenu(false)}
+                      >
+                        <span>🏠</span> Customer View
+                      </Link>
+                      <button
+                        onClick={() => { /* logout logic */ setShowProfileMenu(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg"
+                      >
+                        <span>🚪</span> Logout
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>

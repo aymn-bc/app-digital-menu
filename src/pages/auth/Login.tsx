@@ -97,39 +97,18 @@ export default function Login() {
             </form>
 
             <div className="mt-6 text-center">
-              <Link to="/" className="text-sm text-[rgb(var(--primary))] hover:underline">
+              <p className="text-sm text-[rgb(var(--text-muted))]">
+                Don't have an account?{' '}
+                <Link to="/register" className="text-[rgb(var(--primary))] hover:underline font-semibold">
+                  Sign up
+                </Link>
+              </p>
+              <Link to="/" className="text-sm text-[rgb(var(--primary))] hover:underline block mt-2">
                 ← Back to restaurants
               </Link>
             </div>
           </CardContent>
         </Card>
-
-        {/* Test Credentials */}
-        <div className="mt-6 p-4 rounded-xl bg-[rgb(var(--bg-card))] border border-[rgb(var(--border))]">
-          <p className="text-sm font-semibold text-[rgb(var(--text))] mb-3 flex items-center gap-2">
-            <span>🔑</span> Test Credentials (Password: <code className="bg-[rgb(var(--bg-elevated))] px-1 rounded">password123</code>)
-          </p>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between p-2 rounded-lg bg-[rgb(var(--bg-elevated))]">
-              <div>
-                <span className="text-[rgb(var(--text-muted))]">Customer:</span>
-                <span className="ml-2 font-mono text-[rgb(var(--text))]">john@example.com</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-[rgb(var(--bg-elevated))]">
-              <div>
-                <span className="text-[rgb(var(--text-muted))]">Restaurant:</span>
-                <span className="ml-2 font-mono text-[rgb(var(--text))]">pizza@palace.com</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-[rgb(var(--bg-elevated))]">
-              <div>
-                <span className="text-[rgb(var(--text-muted))]">Admin:</span>
-                <span className="ml-2 font-mono text-[rgb(var(--text))]">admin@example.com</span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   )

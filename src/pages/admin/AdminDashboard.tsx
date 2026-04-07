@@ -2,13 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Card, { CardContent, CardHeader } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
-import { getAdminStats, getRestaurants, getThemeUpdateHistory } from '@/api/admin'
-import type { AdminStats, Restaurant, ThemeUpdate } from '@/api/admin'
+import { getRestaurants, getAdminOrders } from '@/api/admin'
+import type { Restaurant, Order } from '@/api/admin'
 
 export default function AdminDashboard() {
-  const [adminStats, setAdminStats] = useState<AdminStats | null>(null)
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
-  const [themeUpdates, setThemeUpdates] = useState<ThemeUpdate[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -16,14 +15,12 @@ export default function AdminDashboard() {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [statsData, restaurantsData, updatesData] = await Promise.all([
-          getAdminStats(),
+        const [restaurantsData, ordersData] = await Promise.all([
           getRestaurants(),
-          getThemeUpdateHistory()
+          getAdminOrders()
         ])
-        setAdminStats(statsData)
         setRestaurants(restaurantsData)
-        setThemeUpdates(updatesData)
+        setOrders(ordersData)
       } catch (err) {
         setError('Failed to load dashboard data')
         console.error('Error fetching dashboard data:', err)
@@ -61,13 +58,13 @@ export default function AdminDashboard() {
     )
   }
 
-  if (error || !adminStats) {
+  if (error) {
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-[rgb(var(--text))]">Dashboard</h1>
-            <p className="text-red-500">{error || 'Failed to load data'}</p>
+            <p className="text-red-500">{error}</p>
           </div>
         </div>
       </div>
@@ -77,28 +74,28 @@ export default function AdminDashboard() {
   const stats = [
     { 
       label: 'Total Restaurants', 
-      value: adminStats.totalRestaurants, 
+      value: restaurants.length, 
       icon: '🏪',
       color: 'bg-blue-500',
-      trend: '+12 this month'
+      trend: 'Active'
     },
     { 
-      label: 'Active Menus', 
-      value: adminStats.activeMenus, 
-      icon: '📋',
+      label: 'Total Orders', 
+      value: orders.length, 
+      icon: '📦',
       color: 'bg-green-500',
-      trend: '91% active'
+      trend: 'This month'
     },
     { 
-      label: 'Custom Themes', 
-      value: adminStats.customThemes, 
-      icon: '🎨',
+      label: 'Menu Items', 
+      value: 0, // Placeholder
+      icon: '🍽️',
       color: 'bg-purple-500',
-      trend: '+5 new themes'
+      trend: 'Across all restaurants'
     },
     { 
-      label: 'Pending Reviews', 
-      value: adminStats.pendingApprovals, 
+      label: 'Pending Orders', 
+      value: orders.filter(o => o.status === 'pending').length, 
       icon: '⏳',
       color: 'bg-amber-500',
       trend: 'Needs attention'
@@ -211,31 +208,41 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Recent Activity */}
+        {/* Recent Orders */}
         <div>
           <Card variant="elevated">
             <CardHeader action={
-              <Link to="/admin/activity" className="text-sm text-[rgb(var(--primary))] font-medium hover:underline">
+              <Link to="/admin/orders" className="text-sm text-[rgb(var(--primary))] font-medium hover:underline">
                 View All →
               </Link>
             }>
-              <h2 className="font-bold text-[rgb(var(--text))]">Recent Activity</h2>
-              <p className="text-sm text-[rgb(var(--text-muted))]">Latest theme changes</p>
+              <h2 className="font-bold text-[rgb(var(--text))]">Recent Orders</h2>
+              <p className="text-sm text-[rgb(var(--text-muted))]">Latest customer orders</p>
             </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              {themeUpdates.map((update) => (
-                <div key={update.id} className="timeline-step">
-                  <div className="dot" />
-                  <div>
-                    <p className="font-medium text-[rgb(var(--text))] text-sm">{update.changeType}</p>
-                    <p className="text-xs text-[rgb(var(--text-muted))] mt-0.5">{update.restaurantName}</p>
-                    <p className="text-xs text-[rgb(var(--text-muted))] mt-1">{update.details}</p>
-                    <p className="text-xs text-[rgb(var(--primary))] mt-1">
-                      {new Date(update.timestamp).toLocaleString()}
-                    </p>
+            <CardContent className="p-0">
+              <div className="divide-y divide-[rgb(var(--border))]">
+                {orders.slice(0, 5).map((order) => (
+                  <div key={order.id} className="px-5 py-4 flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-[rgb(var(--text))]">Order #{order.id}</p>
+                      <p className="text-sm text-[rgb(var(--text-muted))]">{order.tableId ? `Table ${order.tableId}` : 'Takeout'} • {order.items.length} items</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-[rgb(var(--text))]">${order.total.toFixed(2)}</p>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        order.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                        order.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
+                        order.status === 'preparing' ? 'bg-yellow-100 text-yellow-700' :
+                        order.status === 'ready' ? 'bg-green-100 text-green-700' :
+                        order.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {order.status}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>

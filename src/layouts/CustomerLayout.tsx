@@ -24,12 +24,14 @@ export default function CustomerLayout() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  const isActive = (path: string) => location.pathname === path
+  const isActive = (path: string) =>
+    location.pathname === path ||
+    (path === '/menu' && location.pathname.startsWith('/menu'))
   
   // Check if we're on the restaurant list (home) page
   const isHomePage = location.pathname === '/'
   // Check if we're on the menu page (hero section handles its own spacing)
-  const isMenuPage = location.pathname === '/menu'
+  const isMenuPage = location.pathname.startsWith('/menu')
   const hasHeroSection = isHomePage || isMenuPage
 
   return (
@@ -59,17 +61,15 @@ export default function CustomerLayout() {
             <nav className="hidden md:flex items-center gap-1 bg-white/10 backdrop-blur-sm rounded-full p-1">
               {[
                 { path: '/', label: 'Restaurants', icon: '🏪' },
-                { path: '/menu', label: 'Menu', icon: '🍽️', hidden: !selectedRestaurantId },
+                { path: selectedRestaurantId ? `/menu/${selectedRestaurantId}` : '/menu', label: 'Menu', icon: '🍽️' },
                 { path: '/cart', label: 'Cart', icon: '🛒', badge: pendingOrders },
                 { path: '/orders', label: 'Orders', icon: '📋' },
-              ].filter(item => !item.hidden).map(item => (
+              ].map(item => (
                 <Link
-                  key={item.path}
+                  key={item.label}
                   to={item.path}
                   className={`px-4 lg:px-5 py-2 rounded-full text-sm font-semibold transition-all relative flex items-center gap-2 ${
-                    isActive(item.path) 
-                      ? 'bg-white text-[rgb(var(--primary))] shadow-md' 
-                      : 'text-white hover:bg-white/20'
+                    isActive(item.path) ? 'bg-white text-[rgb(var(--primary))] shadow-md' : 'text-white hover:bg-white/20'
                   }`}
                 >
                   <span>{item.icon}</span>
@@ -170,11 +170,11 @@ export default function CustomerLayout() {
         <div className="flex items-center justify-around h-16 pb-safe">
           {[
             { path: '/', label: 'Home', icon: '🏪' },
-            { path: '/menu', label: 'Menu', icon: '🍽️', hidden: !selectedRestaurantId },
+            { path: selectedRestaurantId ? `/menu/${selectedRestaurantId}` : '/menu', label: 'Menu', icon: '🍽️' },
             { path: '/cart', label: 'Cart', icon: '🛒', badge: pendingOrders },
             { path: '/orders', label: 'Orders', icon: '📋' },
             { path: isAuthenticated ? '#' : '/auth', label: isAuthenticated ? 'Account' : 'Login', icon: isAuthenticated ? '👤' : '🔐' },
-          ].filter(item => !item.hidden).map(item => (
+          ].map(item => (
             item.path === '#' ? (
               <button
                 key="account"
@@ -247,9 +247,9 @@ export default function CustomerLayout() {
             <div>
               <h4 className="font-semibold mb-3">Contact</h4>
               <div className="space-y-2 text-sm text-gray-400">
-                <p>📍 123 Food Street</p>
-                <p>📞 (555) 123-4567</p>
-                <p>✉️ hello@digimenu.com</p>
+                <p>📍 15 Avenue Habib Bourguiba, Tunis</p>
+                <p>📞 (+216) 71 123 456</p>
+                <p>✉️ contact@digimenu.tn</p>
               </div>
             </div>
           </div>

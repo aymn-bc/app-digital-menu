@@ -1,4 +1,6 @@
 import api from "./axios";
+import type { User } from "@/store/useStore";
+import type { AxiosError } from "axios";
 
 // Types
 export interface AdminStats {
@@ -24,6 +26,7 @@ export interface Restaurant {
   id: string;
   name: string;
   slug: string;
+  type: string;
   logo: string;
   coverImage: string;
   description: string;
@@ -115,6 +118,43 @@ export interface MenuItem {
   }[];
 }
 
+// Menu response type
+export interface MenuResponse {
+  categories: Category[];
+  items: MenuItem[];
+}
+
+// Order types
+export interface OrderItem {
+  id: string;
+  menuItemId: string;
+  quantity: number;
+  price: number;
+  specialInstructions?: string;
+}
+
+export interface Order {
+  id: string;
+  userId: string;
+  restaurantId: string;
+  tableId?: string;
+  items: OrderItem[];
+  total: number;
+  status:
+    | "pending"
+    | "confirmed"
+    | "preparing"
+    | "ready"
+    | "delivered"
+    | "cancelled";
+  orderType: "dine-in" | "takeout" | "delivery";
+  specialNotes?: string;
+  promoCode?: string;
+  discount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // API functions
 export async function getAdminStats(): Promise<AdminStats> {
   const response = await api.get("/admin/stats");
@@ -122,7 +162,7 @@ export async function getAdminStats(): Promise<AdminStats> {
 }
 
 export async function getRestaurants(): Promise<Restaurant[]> {
-  const response = await api.get("/admin/restaurants");
+  const response = await api.get("/restaurants");
   return response.data;
 }
 
@@ -131,14 +171,90 @@ export async function getThemeUpdateHistory(): Promise<ThemeUpdate[]> {
   return response.data;
 }
 
-export async function getCategories(
-  restaurantId?: string,
-): Promise<Category[]> {
-  const response = await api.get("/categories", { params: { restaurantId } });
+export async function getMenu(
+  restaurantId: string,
+  lang?: string,
+): Promise<MenuResponse> {
+  const response = await api.get(`/menu/${restaurantId}`, { params: { lang } });
   return response.data;
 }
 
-export async function getMenuItems(restaurantId?: string): Promise<MenuItem[]> {
-  const response = await api.get("/menu-items", { params: { restaurantId } });
+// Order API functions
+export async function createOrder(orderData: {
+  restaurantId: string;
+  items: {
+    menuItemId: string;
+    quantity: number;
+    specialInstructions?: string;
+  }[];
+  tableId?: string;
+  orderType: "dine-in" | "takeout" | "delivery";
+  specialNotes?: string;
+  promoCode?: string;
+}): Promise<Order> {
+  const response = await api.post("/orders", orderData);
   return response.data;
+}
+
+export async function getUserOrders(): Promise<Order[]> {
+  const response = await api.get("/orders/user");
+  return response.data;
+}
+
+export async function getRestaurantOrders(
+  restaurantId: string,
+): Promise<Order[]> {
+  const response = await api.get(`/orders/restaurant/${restaurantId}`);
+  return response.data;
+}
+
+export async function getOrderById(orderId: string): Promise<Order> {
+  const response = await api.get(`/orders/${orderId}`);
+  return response.data;
+}
+
+export async function cancelOrder(orderId: string): Promise<Order> {
+  const response = await api.patch(`/orders/${orderId}/cancel`);
+  return response.data;
+}
+
+export async function getAdminOrders(): Promise<Order[]> {
+  const response = await api.get("/orders/admin/all");
+  return response.data;
+}
+
+// Auth functions
+export async function register(userData: {
+  name: string;
+  email: string;
+  password: string;
+  role?: "customer" | "restaurant";
+}): Promise<{ user: User; access_token: string }> {
+  // Backend auth routes may vary by implementation, so try resolved paths in order.
+  const endpoints = [
+    "/auth/user/register",
+    "/auth/register",
+    "/auth/restaurant/register",
+  ];
+
+  let lastError: any;
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await api.post(endpoint, userData, { timeout: 10000 });
+      return response.data;
+    } catch (error: any) {
+      lastError = error;
+      const responseStatus =
+        (error as AxiosError)?.response?.status ||
+        (error as any)?.response?.status;
+
+      if (responseStatus === 404 || responseStatus === 405) {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError || new Error("Unable to register user; no route available.");
 }

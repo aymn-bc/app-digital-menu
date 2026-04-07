@@ -118,9 +118,9 @@ export default function ProductDetailModal({
 
             {/* Price - Desktop */}
             <div className="hidden md:flex items-baseline gap-3 mb-6">
-              <span className="text-3xl font-bold text-[rgb(var(--primary))]">${item.price.toFixed(2)}</span>
+              <span className="text-3xl font-bold text-[rgb(var(--primary))]">{item.price.toFixed(2)} TND</span>
               {item.originalPrice && (
-                <span className="text-lg text-[rgb(var(--text-muted))] line-through">${item.originalPrice.toFixed(2)}</span>
+                <span className="text-lg text-[rgb(var(--text-muted))] line-through">{item.originalPrice.toFixed(2)} TND</span>
               )}
             </div>
 
@@ -273,7 +273,7 @@ export default function ProductDetailModal({
                 onClick={handleAddToCart}
                 className="flex-1 h-12 text-base font-bold"
               >
-                Add to Cart • ${(item.price * quantity).toFixed(2)}
+                Add to Cart • {(item.price * quantity).toFixed(2)} TND
               </Button>
             </div>
           </div>

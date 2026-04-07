@@ -7,9 +7,10 @@ interface HeroProps {
   hero: Restaurant['heroSection']
   restaurantName?: string
   onSearch?: (query: string) => void
+  onCta?: () => void
 }
 
-export default function Hero({ hero, restaurantName, onSearch }: HeroProps) {
+export default function Hero({ hero, restaurantName, onSearch, onCta }: HeroProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [currentSlide, setCurrentSlide] = useState(0)
   
@@ -127,6 +128,13 @@ export default function Hero({ hero, restaurantName, onSearch }: HeroProps) {
               size="xl" 
               rounded
               className="shadow-xl hover:shadow-2xl"
+              onClick={() => {
+                if (typeof onCta === 'function') {
+                  onCta()
+                } else if (hero.ctaLink) {
+                  window.location.href = hero.ctaLink
+                }
+              }}
               icon={
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
